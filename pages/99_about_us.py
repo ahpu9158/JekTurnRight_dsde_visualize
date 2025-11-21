@@ -1,7 +1,18 @@
 import streamlit as st
 import random
 import time
-
+st.title("About Us")
+st.subheader("Project Members")
+st.markdown('''
+    This project is developed by the team **"JekTurnRight"** for the 2110403 Data Science and Data Engineering (DSDE-CEDT) course.
+    The team members are: \\
+        - Titiporn Somboon \\
+        - Patcharapon Srisuwan \\
+        - Jedsada Meesuk \\
+        - Siravut Chunu 
+''')
+st.divider()
+st.subheader("Chat with Agent J.")
 st.markdown('<style>' + open(r'custom_css/tab_style.css').read() + '</style>', unsafe_allow_html=True)
 
 # Initialize chat history
