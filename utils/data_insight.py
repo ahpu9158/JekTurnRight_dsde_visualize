@@ -40,7 +40,6 @@ def agent_say(text, speed=0.02):
 # -----------------------------------------------
 # Data Loader
 # -----------------------------------------------
-@st.cache_resource
 def load_data(FILE_ID, DATA_PATH):
     url = f"https://drive.google.com/uc?id={FILE_ID}"
     if not os.path.exists(DATA_PATH):
@@ -52,12 +51,10 @@ def load_data(FILE_ID, DATA_PATH):
 # -----------------------------------------------
 # In your utility/data_prep or data_insight file
 
-@st.cache_data
 def setup_data():
     df = get_cleaned_data(df_path, shape_path, check_subdis_path)
     df = clean_type_columns(df)
     return df
-@st.cache_data
 def setup_shape():
     shape = get_shape_file(shape_path)
     shape['centroid'] = shape.geometry.centroid.to_crs(epsg=4326)
@@ -65,7 +62,6 @@ def setup_shape():
     shape['longitude'] = shape['centroid'].x
     return shape
 
-@st.cache_data
 def create_daily_report_table(df):
     df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
     df['date_timestamp'] = df['timestamp'].dt.date
