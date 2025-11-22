@@ -4,21 +4,25 @@ import time
 import gdown
 import os
 from utils.data_prep import *
-from matplotlib import pyplot as plt
 import ipywidgets as widgets
 from ipywidgets import interact
 import seaborn as sns
 import plotly.express as px
 import folium
 from folium.plugins import HeatMap, HeatMapWithTime
-plt.rcParams['font.family'] = 'TH Sarabun New'
-plt.rcParams['font.size'] = 14
+import matplotlib.font_manager as fm
+import matplotlib.pyplot as plt
+
 #-----------------------------------------------
 # Configurations
 #-----------------------------------------------
 df_path = './tmp/data.csv'
 shape_path = 'data/BMA/BMA_ADMIN_SUB_DISTRICT.shp'
 check_subdis_path = 'data/raw/subwithdis.csv'
+font_path = "fonts/THSarabunNew.ttf"
+fm.fontManager.addfont(font_path)
+plt.rcParams["font.family"] = "TH Sarabun New"
+
 # -----------------------------------------------
 # Agent J Typing Function
 # -----------------------------------------------
@@ -191,7 +195,7 @@ def tag_report_freq(df: pd.DataFrame):
         ax.set_title(f"Trend of each type in {year_str}")
         ax.set_xlabel("Month") 
         ax.set_ylabel("Number of Reports")
-        ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.7), ncol=6)
+        ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.155), ncol=8)
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
         st.pyplot(fig)
@@ -224,6 +228,7 @@ def co_occurrence_analysis(df:pd.DataFrame, target_tag: str):
 
     flood_rows = df[df['type_list'].apply(lambda x: target_tag in x if isinstance(x, list) else False)].copy()
     all_co_tags = flood_rows.explode('type_list')
+    all_co_tags['type_list'] = all_co_tags['type_list'].astype(str)
     co_occurrence = all_co_tags[all_co_tags['type_list'] != target_tag]
     tag_counts = co_occurrence['type_list'].value_counts().reset_index()
     tag_counts.columns = ['tag', 'count']
