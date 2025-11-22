@@ -195,7 +195,7 @@ logs/
 *.temp
 .DS_Store
 Thumbs.db
-tmp/data.csv
+data.csv
 
 # API keys and sensitive information
 config.py
