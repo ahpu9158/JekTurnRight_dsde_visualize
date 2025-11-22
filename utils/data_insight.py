@@ -142,6 +142,10 @@ def all_report_interactive_distribution(df: pd.DataFrame):
         plt.tight_layout()
         st.pyplot(fig)
 @st.fragment
+# ------------------------------------------------
+# Report 2 : Distribution of each tag
+# ------------------------------------------------
+### Report 2.1 : Distribution of each tag (all data)
 def tag_report_freq(df: pd.DataFrame):
     exploded_df = df.explode('type_list').copy()
     exploded_df['month'] = exploded_df['timestamp'].dt.to_period('M').dt.start_time
@@ -195,8 +199,11 @@ def tag_report_freq(df: pd.DataFrame):
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
         st.pyplot(fig)
-@st.cache_data
+# ------------------------------------------------
+# Report 3 : Distribution of specific tag
+# ------------------------------------------------
 def tag_distribution(flood_df:pd.DataFrame, tag:str):
+    col1, col2 = st.columns(2)
 
     flood_df = flood_df[flood_df['type'].str.contains(tag)]
 
@@ -211,7 +218,8 @@ def tag_distribution(flood_df:pd.DataFrame, tag:str):
     plt.title('Distribution of Reports by Month')
     plt.ylabel('Number of Reports')
     plt.xticks(rotation=45)
-    st.pyplot(plt)
+    with col1:
+        st.pyplot(plt)
 
     daily_counts = flood_df.set_index('timestamp').resample('D').size()
     plt.figure(figsize=(12, 5))
@@ -219,7 +227,12 @@ def tag_distribution(flood_df:pd.DataFrame, tag:str):
     plt.title('Daily Trend of Reports')
     plt.ylabel('Number of Reports')
     plt.grid(True, alpha=0.3)
-    st.pyplot(plt)
+    with col2:
+        st.pyplot(plt)
+# ------------------------------------------------
+# Report 4 : Distribution of co-occurrence tag with tag 'น้ำท่วม'
+# ------------------------------------------------
+### Report 4.1 : Distribution of co-occurrence tag with tag 'น้ำท่วม' (all data)
 def co_occurrence_analysis(df:pd.DataFrame, target_tag: str):
 
     flood_rows = df[df['type_list'].apply(lambda x: target_tag in x if isinstance(x, list) else False)].copy()
@@ -242,6 +255,11 @@ def co_occurrence_analysis(df:pd.DataFrame, target_tag: str):
 
     fig.update_layout(yaxis=dict(autorange="reversed"))
     st.plotly_chart(fig)
+
+# ------------------------------------------------
+# Report 5 : Table number of reports
+# ------------------------------------------------
+### Report 5.1 : Table number of reports with tag 'น้ำท่วม' (all data)
 def create_complete_daily_summary(df: pd.DataFrame, shape_centers: pd.DataFrame):
     shape_dist_col = 'district'
     shape_sub_col  = 'subdistrict'
@@ -274,9 +292,14 @@ def create_complete_daily_summary(df: pd.DataFrame, shape_centers: pd.DataFrame)
         shape_dist_col: 'district', 
         shape_sub_col: 'subdistrict'
     }, inplace=True)
-    st.dataframe(df_complete.head(10))
-    return df_complete
 
+    to_show_df = df_complete.sort_values(by=['number_of_report'], ascending=False).head(10).reset_index(drop=True)
+    st.dataframe(to_show_df)
+    return df_complete
+#-------------------------------------------------
+# Report 6 : Heat map of tag 'น้ำท่วม' in each subdistrict
+#-------------------------------------------------
+### Report 6.1 : Heat map of tag 'น้ำท่วม' in each subdistrict (accumurate all year)
 def tag_heatmap(df_complete:pd.DataFrame):
 
     map_data = df_complete[df_complete['number_of_report'] > 0]
@@ -291,6 +314,7 @@ def tag_heatmap(df_complete:pd.DataFrame):
     m.save('./tmp/static_heatmap.html')
     st.components.v1.html(open('./tmp/static_heatmap.html', 'r').read(), height=600)
 
+### Report 6.2: Heat map of tag 'น้ำท่วม' in each subdistrict (time-series)
 def tag_heatmap_time_series(df_complete: pd.DataFrame):
 
     df_complete['date'] = pd.to_datetime(df_complete['date'])
@@ -316,15 +340,16 @@ def tag_heatmap_time_series(df_complete: pd.DataFrame):
         index=time_labels,
         radius=25,
         auto_play=True,
-        max_opacity=0.6
+        max_opacity=0.6,
     ).add_to(m2)
 
     m2.save('./tmp/monthly_flood_heatmap.html')
     st.components.v1.html(open('./tmp/monthly_flood_heatmap.html', 'r').read(), height=600)
 
 # -----------------------------------------------
-# Report 7
+# Report 7 : Distribution of time-range to solve 'น้ำท่วม' problem
 # -----------------------------------------------
+### Report 7.1 : Distribution of time-range to solve 'น้ำท่วม' problem
 def get_completed_flood_reports(df):
     selected_cols = ['district', 'subdistrict', 'timestamp', 'last_activity', 'latitude', 'longitude']
 
@@ -343,7 +368,6 @@ def get_completed_flood_reports(df):
 
     # Create new time-range cols
     solve_df['range'] = solve_df['last_activity'] - solve_df['timestamp']
-    st.dataframe(solve_df.head(10))
     return solve_df
 def tag_time_solve_distribution(solve_df:pd.DataFrame):
 
