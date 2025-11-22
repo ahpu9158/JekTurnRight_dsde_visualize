@@ -82,7 +82,6 @@ def create_daily_report_table(df):
 # Report 1 : Distribution of report
 # ------------------------------------------------
 ### Report 1.1 : Distribution of report (all year)
-@st.cache_data
 def all_report_distribution(df:pd.DataFrame):
     monthly_counts = df.groupby(df['timestamp'].dt.month_name()).size()
 
@@ -141,13 +140,15 @@ def all_report_interactive_distribution(df: pd.DataFrame):
         ax2.set_ylabel("Number of Reports")
         plt.tight_layout()
         st.pyplot(fig)
-@st.fragment
 # ------------------------------------------------
 # Report 2 : Distribution of each tag
 # ------------------------------------------------
 ### Report 2.1 : Distribution of each tag (all data)
+@st.fragment
 def tag_report_freq(df: pd.DataFrame):
     exploded_df = df.explode('type_list').copy()
+    if pd.api.types.is_datetime64tz_dtype(exploded_df['timestamp']):
+        exploded_df['timestamp'] = exploded_df['timestamp'].dt.tz_localize(None)
     exploded_df['month'] = exploded_df['timestamp'].dt.to_period('M').dt.start_time
     exploded_df['year'] = exploded_df['timestamp'].dt.year
     exploded_df.dropna(subset=['type_list', 'year'], inplace=True)
