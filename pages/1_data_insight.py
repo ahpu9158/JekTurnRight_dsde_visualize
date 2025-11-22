@@ -9,6 +9,12 @@ import time
 import gdown
 import os
 from utils.data_insight import *
+st.set_page_config(
+    page_title="Data Insight from Traffy Fondue",
+    page_icon="🌊",  
+    layout="wide" 
+)
+st.markdown('<style>' + open(r'custom_css/tab_style.css').read() + '</style>', unsafe_allow_html=True)
 # -----------------------------
 # CONFIG
 # -----------------------------
@@ -125,3 +131,8 @@ tag_time_solve_distribution(solved_df)
 st.divider()
 agent_say(''' Thank you for exploring the data with us! Next, you can proceed to the Model Prediction page to see our prediction flooding using machine learning models.
           ''')
+# -----------------------------------------------
+# Page Ends
+# -----------------------------------------------
+st.divider()
+st.caption("JeckTurnRight © 2025")

@@ -27,7 +27,7 @@ plt.rcParams["font.family"] = "TH Sarabun New"
 # Agent J Typing Function
 # -----------------------------------------------
 def agent_say(text, speed=0.02):
-    with st.chat_message("agent"):
+    with st.chat_message("agent", avatar="assets/images/icon.png"):
         msg = st.empty()
         display = ""
 
