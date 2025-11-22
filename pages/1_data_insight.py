@@ -14,6 +14,17 @@ from utils.data_insight import *
 # -----------------------------
 FILE_ID = "1tBAyy3PE_2LtqiY7-F1tj3wXIoNqGhXa"
 DATA_PATH = "./tmp/data.csv"
+st.markdown("""
+<style>
+@font-face {
+    font-family: 'Sarabun';
+    src: url('fonts/THSarabunNew.ttf') format('truetype');
+}
+html, body, [class*="css"] {
+    font-family: 'Sarabun', sans-serif !important;
+}
+</style>
+""", unsafe_allow_html=True)
 # ------------------------------------------------
 # PAGE START
 # ------------------------------------------------
