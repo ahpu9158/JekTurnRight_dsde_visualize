@@ -125,6 +125,8 @@ tag_choropleth_with_basemap(df_complete, shape)
 agent_say(''' For better understanding, we can also see the time series heatmap of flooding reports in each subdistrict.
           ''')
 tag_heatmap_time_series(df_complete)
+
+
 # -----------------------------------------------
 # Report 7 : Distribution of time-range to solve 'น้ำท่วม' problem
 # -----------------------------------------------

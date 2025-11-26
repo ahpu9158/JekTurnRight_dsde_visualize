@@ -359,8 +359,7 @@ def tag_choropleth_with_basemap(df_complete: pd.DataFrame, shape_gdf: gpd.GeoDat
     ax.set_axis_off()
     
     plt.tight_layout()
-    plt.show()
-    st.pyplot(plt)
+    st.pyplot(fig)
 
 # tag_choropleth_with_basemap(df_complete, shape)
 
