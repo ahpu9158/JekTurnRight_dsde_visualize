@@ -117,7 +117,8 @@ with st.container():
 #-------------------------------------------------
 agent_say(''' Now, let's visualize the distribution of flooding reports across different subdistricts in Bangkok using a heatmap.
           ''')
-tag_heatmap(df_complete)
+# tag_heatmap(df_complete)
+tag_choropleth_with_basemap(df_complete, shape)
 agent_say(''' For better understanding, we can also see the time series heatmap of flooding reports in each subdistrict.
           ''')
 tag_heatmap_time_series(df_complete)

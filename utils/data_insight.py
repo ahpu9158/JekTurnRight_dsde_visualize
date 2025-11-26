@@ -8,6 +8,7 @@ import ipywidgets as widgets
 from ipywidgets import interact
 import seaborn as sns
 import plotly.express as px
+import contextily as ctx
 import folium
 from folium.plugins import HeatMap, HeatMapWithTime
 import matplotlib.font_manager as fm
@@ -315,6 +316,55 @@ def tag_heatmap(df_complete:pd.DataFrame):
     m.save('./tmp/static_heatmap.html')
     st.components.v1.html(open('./tmp/static_heatmap.html', 'r').read(), height=600)
 
+### Report 6.1.5 : Heat map of tag 'น้ำท่วม' in each subdistrict (accumurate all year) (another version)
+def tag_choropleth_with_basemap(df_complete: pd.DataFrame, shape_gdf: gpd.GeoDataFrame):
+    
+    summary_data = df_complete.groupby(['district', 'subdistrict'])['number_of_report'].sum().reset_index()
+    
+    map_df = shape_gdf.merge(
+        summary_data,
+        left_on=['district', 'subdistrict'],
+        right_on=['district', 'subdistrict'],
+        how='left'
+    )
+    
+    map_df['number_of_report'] = map_df['number_of_report'].fillna(0)
+
+    if map_df.crs is None:
+        map_df.set_crs(epsg=4326, inplace=True)
+    
+    map_df_web = map_df.to_crs(epsg=3857)
+    
+    fig, ax = plt.subplots(1, 1, figsize=(15, 15))
+    
+    map_df_web.plot(
+        column='number_of_report',
+        cmap='OrRd',
+        linewidth=0.5,\
+        ax=ax,
+        edgecolor='black', 
+        alpha=0.6,       
+        legend=True,
+        legend_kwds={
+            'label': "Number of Flood Reports",
+            'orientation': "horizontal",
+            'shrink': 0.7,
+            'pad': 0.02
+        }
+    )
+    
+    ctx.add_basemap(ax, source=ctx.providers.OpenStreetMap.Mapnik)
+
+    ax.set_title("Flood Intensity with Real Map Background", fontsize=15)
+    ax.set_axis_off()
+    
+    plt.tight_layout()
+    plt.show()
+    st.pyplot(plt)
+
+# tag_choropleth_with_basemap(df_complete, shape)
+
+
 ### Report 6.2: Heat map of tag 'น้ำท่วม' in each subdistrict (time-series)
 def tag_heatmap_time_series(df_complete: pd.DataFrame):
 
@@ -370,6 +420,7 @@ def get_completed_flood_reports(df):
     # Create new time-range cols
     solve_df['range'] = solve_df['last_activity'] - solve_df['timestamp']
     return solve_df
+
 def tag_time_solve_distribution(solve_df:pd.DataFrame):
 
     solve_df['days_taken'] = solve_df['range'].dt.days
