@@ -35,6 +35,9 @@ html, body, [class*="css"] {
 # PAGE START
 # ------------------------------------------------
 st.title("Data Insight")
+st.warning("This page may take a while to load due to data processing and visualization tasks. Please be patient while we prepare the insights for you.")
+st.divider()
+# ------------------------------------------------
 load_data(FILE_ID, DATA_PATH)
 df = setup_data()
 shape = setup_shape()

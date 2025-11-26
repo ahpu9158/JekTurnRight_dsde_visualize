@@ -12,7 +12,7 @@ st.markdown('<style>' + open(r'custom_css/tab_style.css').read() + '</style>', u
 # --------------------------------
 # config
 # --------------------------------
-API_URL = "https://sirasira-bangkok-flood-api.hf.space/predict_csv"
+API_URL = "https://sirasira-bangkok-flood-api.hf.space/predict"
 # --------------------------------
 # Start of Page
 # --------------------------------
@@ -94,18 +94,25 @@ if st.button("Get Flood Forecast"):
         if( uploaded_file is not None):
             files = {"file": uploaded_file}
         response = requests.post(API_URL, files=files).json()
-    #st.json(response, expanded=True)
+    # st.json(response, expanded=True)
+    response.sort(key=lambda x: x['location'], reverse=True)
 
-    lat = df[df["subdistrict"] == response["location"]]["latitude"].values[0]
-    lon = df[df["subdistrict"] == response["location"]]["longitude"].values[0]
-    col1, col2 = st.columns(2)
-    with col1:
-        st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=12, height=400)
-    with col2:
-        st.markdown(f"### Location: {response['location']}")
-        st.markdown(f"### Date: {response['date']}")
-        st.metric(label="Risk Percentage", value=f"{response['risk_percentage']}")
-        st.badge(label=response['status'], color="red" if response['status']=="FLOOD ALERT" else "green", width="stretch")
-        
+    # --------------------------------
+    def model_visualize(response):
+        lat = df[(df["subdistrict"] == response["location"]) & (df['date'] == response['date'])]["latitude"].values[0]
+        lon = df[(df["subdistrict"] == response["location"]) & (df['date'] == response['date'])]["longitude"].values[0]
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"### Flood Forecast for {response['location']} on {response['date']}")
+            # st.markdown(f"{lat}, {lon}")
+            st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=12, height=400)
+        with col2:
+            st.metric(label="Risk Percentage", value=f"{response['risk_score']}")
+            st.badge(label=response['status'], color="red" if response['status']=="🚨 FLOOD" else "green", width="stretch")
+
+
+    for resp in response:
+        model_visualize(resp)
+# --------------------------------
 st.divider()
 st.caption("JeckTurnRight © 2025")

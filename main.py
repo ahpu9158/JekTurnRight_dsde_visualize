@@ -45,7 +45,7 @@ col1, col2 = st.columns(2)
 
 with col1:
     if st.button("Data Insight Page", use_container_width=True, type="primary"):
-        st.switch_page("pages/1_example.py")
+        st.switch_page("pages/1_data_insight.py")
 
 with col2:
     if st.button("Flood Forecast Model Page", use_container_width=True, type="secondary"):
