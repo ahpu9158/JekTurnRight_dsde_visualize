@@ -106,15 +106,16 @@ if st.button("Get Flood Forecast"):
             st.error(f"❌ Connection Failed: {e}")
 
 # ---------------------------------------------------------
-# 5. SENIOR DASHBOARD (OPTIMIZED)
+# 5. DASHBOARD (ANIMATED TIME-LAPSE & ALWAYS-ON MAP)
 # ---------------------------------------------------------
+from folium.plugins import TimestampedGeoJson # REQUIRED for Animation
+
 if 'forecast' in st.session_state and isinstance(st.session_state['forecast'], list):
     
     st.divider()
     st.markdown("## 📊 Forecast Dashboard")
 
-    # --- 5.1 PERFORMANCE OPTIMIZATION (Hash Map) ---
-    # Create a Coordinate Lookup Dictionary O(1) speed
+    # --- 5.1 PRE-CALCULATIONS ---
     try:
         coord_map = (
             df.groupby('subdistrict')[['latitude', 'longitude']]
@@ -125,13 +126,21 @@ if 'forecast' in st.session_state and isinstance(st.session_state['forecast'], l
         st.error("❌ Error: Uploaded CSV missing 'subdistrict', 'latitude', or 'longitude'.")
         st.stop()
 
-    # --- 5.2 DATA CLEANING ---
+    # --- 5.2 DATA PREP ---
     res_df = pd.DataFrame(st.session_state['forecast'])
     
-    if 'subdistrict' in res_df.columns:
-        res_df = res_df.rename(columns={'subdistrict': 'location'})
+    # Normalization
+    if 'subdistrict' in res_df.columns: res_df = res_df.rename(columns={'subdistrict': 'location'})
+    
+    # Handle Status Column
+    for col in ['prediction', 'label', 'result']:
+        if col in res_df.columns:
+            res_df = res_df.rename(columns={col: 'Status'})
+            break
+    if 'Status' not in res_df.columns: res_df['Status'] = 'UNKNOWN'
+    res_df['Status'] = res_df['Status'].astype(str).str.upper()
 
-    # Normalize Risk Scores
+    # Clean Risk
     def clean_risk_probability(val):
         if isinstance(val, str): val = val.replace("%", "")
         try:
@@ -143,109 +152,140 @@ if 'forecast' in st.session_state and isinstance(st.session_state['forecast'], l
     res_df['date'] = pd.to_datetime(res_df['date'])
     res_df = res_df.sort_values(['location', 'date']).reset_index(drop=True)
 
-    # --- 5.3 GLOBAL METRICS ---
+    # --- 5.3 METRICS ---
     m1, m2, m3, m4 = st.columns(4)
-    avg_risk = res_df['risk_probability'].mean()
-    max_risk = res_df['risk_probability'].max()
-    danger_days = res_df[res_df['risk_probability'] >= 80].shape[0]
+    flood_days = res_df[res_df['Status'] == 'FLOOD'].shape[0]
     
-    m1.metric("Average Risk", f"{avg_risk:.1f}%")
-    m2.metric("Peak Risk", f"{max_risk:.1f}%", delta="Critical" if max_risk >= 80 else "Normal", delta_color="inverse")
-    m3.metric("Danger Reports", f"{danger_days}", help="Reports where risk > 80%")
-    m4.metric("Districts Monitored", f"{res_df['location'].nunique()}")
+    m1.metric("Average Risk", f"{res_df['risk_probability'].mean():.1f}%")
+    m2.metric("Peak Risk", f"{res_df['risk_probability'].max():.1f}%")
+    m3.metric("Total Flood Alerts", f"{flood_days}", help="Total predictions labeled FLOOD")
+    m4.metric("Districts", f"{res_df['location'].nunique()}")
 
     # =========================================================
     # 5.4 TABS ARCHITECTURE
     # =========================================================
     tab1, tab2 = st.tabs(["🌎 Macro Overview", "🔍 Deep Dive Analysis"])
 
-    # --- TAB 1: SMART TREND CHART ---
+    # --- TAB 1: TRENDS ---
     with tab1:
         st.subheader("📈 Comparative Risk Trends")
-
-        # Smart Default: Top 10 Riskiest
         risk_ranking = res_df.groupby('location')['risk_probability'].max().sort_values(ascending=False)
-        top_10_riskiest = risk_ranking.head(3).index.tolist()
-        all_locations = sorted(res_df['location'].unique())
-
-        # Multiselect with Smart Defaults
-        selected_districts_chart = st.multiselect(
-            "Select Districts to Compare:", 
-            options=all_locations, 
-            default=top_10_riskiest
-        )
-
-        if selected_districts_chart:
-            chart_data = res_df[res_df['location'].isin(selected_districts_chart)]
-            
-            fig = px.line(
-                chart_data, 
-                x='date', y='risk_probability', color='location', markers=True,
-                color_discrete_sequence=px.colors.qualitative.Bold,
-                height=400
-            )
-            # fig.add_hline(y=80, line_dash="dot", line_color="red", annotation_text="Threshold 80%")
-            fig.update_layout(xaxis_title=None, template="plotly_white", hovermode="x unified")
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("Select a district to view trends.")
-
-    # --- TAB 2: DAILY OVERVIEW (HEATMAP + MARKERS) ---
-    with tab2:
-        # Layout: Date Slider | View Toggle
-        c_slide, c_toggle = st.columns([3, 1])
-        with c_slide:
-            min_date, max_date = res_df['date'].min().date(), res_df['date'].max().date()
-            selected_date = st.slider("Select Date:", min_value=min_date, max_value=max_date, value=min_date, format="YYYY-MM-DD")
-        with c_toggle:
-            map_style = st.radio("Map Style", ["📍 Markers", "🔥 Heatmap"], horizontal=True)
-
-        day_data = res_df[res_df['date'].dt.date == selected_date]
+        top_10 = risk_ranking.head(3).index.tolist()
         
-        if not day_data.empty:
-            m_all = folium.Map(location=[13.7563, 100.5018], zoom_start=11, tiles="CartoDB positron")
-            heat_data = [] 
+        sel = st.multiselect("Select Districts:", sorted(res_df['location'].unique()), default=top_10)
+        if sel:
+            fig = px.line(res_df[res_df['location'].isin(sel)], x='date', y='risk_probability', color='location', markers=True)
+            fig.add_hline(y=50, line_dash="dot", line_color="orange", annotation_text="Risk Zone")
+            st.plotly_chart(fig, use_container_width=True)
 
-            for _, row in day_data.iterrows():
-                loc_name = row['location']
-                risk = row['risk_probability']
-                
-                # Optimized Lookup (Hash Map)
-                coords = coord_map.get(loc_name)
-                
-                if coords:
-                    lat, lon = coords['latitude'], coords['longitude']
-                    
-                    if map_style == "🔥 Heatmap":
-                        # Weight by risk (0.0 to 1.0)
-                        if risk > 10: heat_data.append([lat, lon, risk/100])
-                    else:
-                        # Marker Logic
-                        if risk >= 80: color = "#ff4b4b"
-                        elif risk >= 50: color = "#ffa500"
-                        else: color = "#21c354"
-                        
-                        folium.CircleMarker(
-                            location=[lat, lon], radius=15, color=color, 
-                            fill=True, fill_color=color, fill_opacity=0.7,
-                            popup=f"<b>{loc_name}</b><br>Risk: {risk:.1f}%"
-                        ).add_to(m_all)
+    # --- TAB 2: DEEP DIVE (UPDATED) ---
+    with tab2:
+        # Senior UX: Allow user to switch between "Specific Day" and "Video Animation"
+        view_mode = st.radio("Visualization Mode:", ["📅 Single Date Inspector", "▶️ Time-Lapse Animation"], horizontal=True)
+        
+        # =================================================
+        # MODE A: SINGLE DATE INSPECTOR (Fixed Rule #1)
+        # =================================================
+        if view_mode == "📅 Single Date Inspector":
+            min_d, max_d = res_df['date'].min().date(), res_df['date'].max().date()
+            selected_date = st.slider("Select Date:", min_value=min_d, max_value=max_d, value=min_d)
 
-            # Render Heatmap Layer if selected
-            if map_style == "🔥 Heatmap" and heat_data:
-                HeatMap(
-                    heat_data, radius=25, blur=15, max_zoom=10,
-                    gradient={0.4: 'blue', 0.65: 'lime', 1: 'red'}
-                ).add_to(m_all)
-
-            st_folium(m_all, height=500, use_container_width=True, key=f"map_{selected_date}_{map_style}")
+            # Initialize Map OUTSIDE the loop (Fix for Rule #1)
+            m_static = folium.Map(location=[13.7563, 100.5018], zoom_start=11, tiles="CartoDB positron")
             
-            # Summary Table
-            st.markdown(f"### 📋 Risk Report: {selected_date}")
-            display_table = day_data[['location', 'risk_probability']].copy().sort_values('risk_probability', ascending=False)
-            st.dataframe(
-                display_table.style.background_gradient(subset=['risk_probability'], cmap="Reds"),
-                use_container_width=True
-            )
+            day_data = res_df[res_df['date'].dt.date == selected_date]
+            count_markers = 0
+
+            # Loop to add markers
+            if not day_data.empty:
+                for _, row in day_data.iterrows():
+                    # STRICT FILTER
+                    if row['Status'] != 'FLOOD': continue
+
+                    count_markers += 1
+                    coords = coord_map.get(row['location'])
+                    if coords:
+                        risk = row['risk_probability']
+                        # Color Logic
+                        if risk >= 90: c = "#ff4b4b"
+                        elif risk >= 70: c = "#ffa500"
+                        elif risk >= 50: c = "#ffff00"
+                        else: c = "#ffff00"
+
+                        folium.CircleMarker(
+                            location=[coords['latitude'], coords['longitude']],
+                            radius=15, color="black", weight=1, fill=True, fill_color=c, fill_opacity=0.8,
+                            popup=f"<b>{row['location']}</b><br>Risk: {risk:.1f}%"
+                        ).add_to(m_static)
+
+            # RENDER MAP ALWAYS (Even if count_markers is 0)
+            st_folium(m_static, height=500, use_container_width=True, key=f"static_map_{selected_date}")
+
+            # Show status message BELOW map
+            if count_markers == 0:
+                st.info(f"✅ No confirmed 'FLOOD' status detected on {selected_date}. Map is clear.")
+            else:
+                st.warning(f"⚠️ Found {count_markers} critical areas on this date.")
+
+        # =================================================
+        # MODE B: TIME-LAPSE ANIMATION (Rule #2)
+        # =================================================
         else:
-            st.info(f"No forecast data for {selected_date}.")
+            st.markdown("### 🎬 Flood Evolution Time-Lapse")
+            st.caption("Press the 'Play' button on the map to watch the flood progression.")
+
+            # 1. Filter Data: We usually only animate the 'FLOOD' events to keep it clean
+            anim_data = res_df[res_df['Status'] == 'FLOOD'].copy()
+            
+            if anim_data.empty:
+                st.success("No FLOOD events found in the entire dataset to animate.")
+            else:
+                # 2. Build GeoJSON Features
+                features = []
+                for _, row in anim_data.iterrows():
+                    coords = coord_map.get(row['location'])
+                    if coords:
+                        risk = row['risk_probability']
+                        # Color Logic (Same as above)
+                        if risk >= 90: c = "#ff4b4b"
+                        elif risk >= 70: c = "#ffa500"
+                        else: c = "#ffff00"
+
+                        # Create Feature
+                        feature = {
+                            'type': 'Feature',
+                            'geometry': {
+                                'type': 'Point',
+                                'coordinates': [coords['longitude'], coords['latitude']],
+                            },
+                            'properties': {
+                                'time': row['date'].strftime('%Y-%m-%d'), # REQUIRED for animation
+                                'style': {'color': c},
+                                'icon': 'circle',
+                                'iconstyle': {
+                                    'fillColor': c,
+                                    'fillOpacity': 0.8,
+                                    'stroke': 'true',
+                                    'radius': 10
+                                },
+                                'popup': f"{row['location']} ({risk:.0f}%)"
+                            }
+                        }
+                        features.append(feature)
+
+                # 3. Create Animation Map
+                m_anim = folium.Map(location=[13.7563, 100.5018], zoom_start=11, tiles="CartoDB positron")
+
+                TimestampedGeoJson(
+                    {'type': 'FeatureCollection', 'features': features},
+                    period='P1D',    # 1 Day per frame
+                    add_last_point=True,
+                    auto_play=False,
+                    loop=False,
+                    max_speed=10,
+                    loop_button=True,
+                    date_options='YYYY-MM-DD',
+                    time_slider_drag_update=True
+                ).add_to(m_anim)
+
+                st_folium(m_anim, height=500, use_container_width=True, key="anim_map")
